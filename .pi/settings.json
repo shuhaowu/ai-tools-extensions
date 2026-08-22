@@ -1,0 +1,9 @@
+{
+  "packages": [
+    {
+      "source": "git:github.com/shuhaowu/ai-tools-extensions@main",
+      "extensions": []
+    },
+    ".."
+  ]
+}
