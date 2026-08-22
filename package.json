@@ -1,0 +1,17 @@
+{
+  "name": "@shuhaowu/ai-dev-extensions",
+  "private": true,
+  "keywords": ["pi-package"],
+  "workspaces": [
+    "packages/*",
+    "pi/extensions/*"
+  ],
+  "type": "module",
+  "pi": {
+    "extensions": ["pi/extensions/*/index.ts"]
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@biomejs/biome": "^2.5.10"
+  }
+}
