@@ -36,20 +36,20 @@ class RingBuffer<T> {
 	}
 }
 
-const buffer = new RingBuffer<MessageState>(16);
+const WIDGET_ID = "tps-report";
 
 export default function (pi: ExtensionAPI) {
 	const messageStates = new Map<string, MessageState>();
-	const statusId = "tps-report";
+	const buffer = new RingBuffer<MessageState>(16);
 
-	const clearStatus = (ctx: ExtensionContext) => {
-		ctx.ui.setStatus(statusId, undefined);
+	const clearWidget = (ctx: ExtensionContext) => {
+		ctx.ui.setWidget(WIDGET_ID, undefined);
 	};
 
-	const renderStatus = (ctx: ExtensionContext, spinner = false) => {
+	const renderWidget = (ctx: ExtensionContext, spinner = false) => {
 		const items = buffer.values();
 		if (items.length === 0) {
-			ctx.ui.setStatus(statusId, spinner ? "⏳" : undefined);
+			ctx.ui.setWidget(WIDGET_ID, [spinner ? "⏳" : "🟢"], { placement: "belowEditor" });
 			return;
 		}
 
@@ -70,12 +70,13 @@ export default function (pi: ExtensionAPI) {
 		const promptTps = totalPromptTokens / (totalTtfbMs / 1000 || 1);
 		const decodeTps = totalOutputTokens / (totalDecodeMs / 1000 || 1);
 
+		const prefix = spinner ? "⏳" : "🟢";
 		const text = `prompt ${promptTps.toFixed(1)} t/s | decode ${decodeTps.toFixed(1)} t/s`;
-		ctx.ui.setStatus(statusId, spinner ? `⏳ ${text}` : text);
+		ctx.ui.setWidget(WIDGET_ID, [`${prefix} ${text}`], { placement: "belowEditor" });
 	};
 
 	pi.on("session_start", (_event, ctx) => {
-		clearStatus(ctx);
+		ctx.ui.setWidget(WIDGET_ID, ["🟢"], { placement: "belowEditor" });
 	});
 
 	pi.on("message_start", (event, ctx) => {
@@ -90,7 +91,7 @@ export default function (pi: ExtensionAPI) {
 			outputTokens: 0,
 		});
 
-		renderStatus(ctx, true);
+		renderWidget(ctx, true);
 	});
 
 	pi.on("message_update", (event, _ctx) => {
@@ -107,7 +108,7 @@ export default function (pi: ExtensionAPI) {
 	pi.on("message_end", (event, ctx) => {
 		const msg = event.message;
 		if (msg.role !== "assistant" || !msg.usage) {
-			renderStatus(ctx, false);
+			renderWidget(ctx, false);
 			return;
 		}
 
@@ -115,7 +116,7 @@ export default function (pi: ExtensionAPI) {
 		const state = messageStates.get(id);
 
 		if (!state?.start) {
-			renderStatus(ctx, false);
+			renderWidget(ctx, false);
 			return;
 		}
 
@@ -127,10 +128,10 @@ export default function (pi: ExtensionAPI) {
 		buffer.push({ ...state });
 
 		messageStates.delete(id);
-		renderStatus(ctx, false);
+		renderWidget(ctx, false);
 	});
 
 	pi.on("session_shutdown", (_event, ctx) => {
-		clearStatus(ctx);
+		clearWidget(ctx);
 	});
 }
