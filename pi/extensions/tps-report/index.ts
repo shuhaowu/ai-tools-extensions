@@ -47,6 +47,12 @@ function formatTps(tps: number | null): string {
 	return tps !== null && tps > 0 ? tps.toFixed(1) : "--";
 }
 
+function formatTtft(ms: number | null): string {
+	if (ms === null) return "--";
+	if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+	return `${Math.round(ms)}ms`;
+}
+
 export default function (pi: ExtensionAPI) {
 	const messageStates = new Map<string, MessageState>();
 	const buffer = new RingBuffer<MessageState>(16);
@@ -55,12 +61,13 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setWidget(WIDGET_ID, undefined);
 	};
 
-
 	const renderWidget = (ctx: ExtensionContext) => {
 		const items = buffer.values();
 
-		let ppTps: number | null = null;
-		let tgTps: number | null = null;
+		let avgPpTps: number | null = null;
+		let avgTgTps: number | null = null;
+		let lastTtftMs: number | null = null;
+		let lastInputTokens: number | null = null;
 
 		if (items.length > 0) {
 			let totalPromptTokens = 0;
@@ -77,16 +84,21 @@ export default function (pi: ExtensionAPI) {
 				totalDecodeMs += decodeMs;
 			}
 
-			ppTps = totalTtfbMs > 0 ? totalPromptTokens / (totalTtfbMs / 1000) : null;
-			tgTps = totalDecodeMs > 0 ? totalOutputTokens / (totalDecodeMs / 1000) : null;
+			avgPpTps = totalTtfbMs > 0 ? totalPromptTokens / (totalTtfbMs / 1000) : null;
+			avgTgTps = totalDecodeMs > 0 ? totalOutputTokens / (totalDecodeMs / 1000) : null;
+
+			// biome-ignore lint/style/noNonNullAssertion: items is non-empty here
+			const last = items[items.length - 1]!;
+			lastTtftMs = last.firstToken ? last.firstToken - last.start : last.end - last.start;
+			lastInputTokens = last.inputTokens;
 		}
 
 		ctx.ui.setWidget(
 			WIDGET_ID,
 			(_tui, theme) => {
-				const text = `PP: ${formatTps(ppTps)} t/s • TG: ${formatTps(tgTps)} t/s`;
+				const text = `PP: ${formatTps(avgPpTps)} t/s • TG: ${formatTps(avgTgTps)} t/s • Last TTFT: ${formatTtft(lastTtftMs)} (${lastInputTokens ?? "--"} tokens)`;
 				return {
-					render: () => [theme.fg("muted", text)],
+					render: () => [theme.fg("dim", text)],
 					invalidate: () => {},
 				};
 			},
