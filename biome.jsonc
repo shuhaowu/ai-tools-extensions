@@ -1,7 +1,11 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
   "files": {
-    "includes": ["packages/**/*.ts", "pi/extensions/**/*.ts"]
+    "includes": [
+      "packages/**/*.ts",
+      "pi/extensions/**/*.ts",
+      "!!.pi/git/**/*",
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -12,7 +16,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "style": {
         "noInferrableTypes": "off" // Sometimes it is good to over constrain the types to make it harder to change and break.
       },

@@ -25,6 +25,11 @@ class RingBuffer<T> {
 		if (this.filled < this.size) this.filled++;
 	}
 
+	reset() {
+		this.idx = 0;
+		this.filled = 0;
+	}
+
 	values(): T[] {
 		const out: T[] = [];
 		for (let i = 0; i < this.filled; i++) {
@@ -38,6 +43,10 @@ class RingBuffer<T> {
 
 const WIDGET_ID = "tps-report";
 
+function formatTps(tps: number | null): string {
+	return tps !== null && tps > 0 ? tps.toFixed(1) : "--";
+}
+
 export default function (pi: ExtensionAPI) {
 	const messageStates = new Map<string, MessageState>();
 	const buffer = new RingBuffer<MessageState>(16);
@@ -46,37 +55,49 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.setWidget(WIDGET_ID, undefined);
 	};
 
-	const renderWidget = (ctx: ExtensionContext, spinner = false) => {
+
+	const renderWidget = (ctx: ExtensionContext) => {
 		const items = buffer.values();
-		if (items.length === 0) {
-			ctx.ui.setWidget(WIDGET_ID, [spinner ? "⏳" : "🟢"], { placement: "belowEditor" });
-			return;
+
+		let ppTps: number | null = null;
+		let tgTps: number | null = null;
+
+		if (items.length > 0) {
+			let totalPromptTokens = 0;
+			let totalOutputTokens = 0;
+			let totalTtfbMs = 0;
+			let totalDecodeMs = 0;
+
+			for (const s of items) {
+				const ttfb = s.firstToken ? s.firstToken - s.start : s.end - s.start;
+				const decodeMs = s.end - s.start - ttfb;
+				totalPromptTokens += s.inputTokens;
+				totalOutputTokens += s.outputTokens;
+				totalTtfbMs += ttfb;
+				totalDecodeMs += decodeMs;
+			}
+
+			ppTps = totalTtfbMs > 0 ? totalPromptTokens / (totalTtfbMs / 1000) : null;
+			tgTps = totalDecodeMs > 0 ? totalOutputTokens / (totalDecodeMs / 1000) : null;
 		}
 
-		let totalPromptTokens = 0;
-		let totalOutputTokens = 0;
-		let totalTtfbMs = 0;
-		let totalDecodeMs = 0;
-
-		for (const s of items) {
-			const ttfb = s.firstToken ? s.firstToken - s.start : s.end - s.start;
-			const decodeMs = s.end - s.start - ttfb;
-			totalPromptTokens += s.inputTokens;
-			totalOutputTokens += s.outputTokens;
-			totalTtfbMs += ttfb;
-			totalDecodeMs += decodeMs;
-		}
-
-		const promptTps = totalPromptTokens / (totalTtfbMs / 1000 || 1);
-		const decodeTps = totalOutputTokens / (totalDecodeMs / 1000 || 1);
-
-		const prefix = spinner ? "⏳" : "🟢";
-		const text = `prompt ${promptTps.toFixed(1)} t/s | decode ${decodeTps.toFixed(1)} t/s`;
-		ctx.ui.setWidget(WIDGET_ID, [`${prefix} ${text}`], { placement: "belowEditor" });
+		ctx.ui.setWidget(
+			WIDGET_ID,
+			(_tui, theme) => {
+				const text = `PP: ${formatTps(ppTps)} t/s • TG: ${formatTps(tgTps)} t/s`;
+				return {
+					render: () => [theme.fg("muted", text)],
+					invalidate: () => {},
+				};
+			},
+			{ placement: "aboveEditor" },
+		);
 	};
 
 	pi.on("session_start", (_event, ctx) => {
-		ctx.ui.setWidget(WIDGET_ID, ["🟢"], { placement: "belowEditor" });
+		buffer.reset();
+		messageStates.clear();
+		renderWidget(ctx);
 	});
 
 	pi.on("message_start", (event, ctx) => {
@@ -91,7 +112,7 @@ export default function (pi: ExtensionAPI) {
 			outputTokens: 0,
 		});
 
-		renderWidget(ctx, true);
+		renderWidget(ctx);
 	});
 
 	pi.on("message_update", (event, _ctx) => {
@@ -107,18 +128,12 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("message_end", (event, ctx) => {
 		const msg = event.message;
-		if (msg.role !== "assistant" || !msg.usage) {
-			renderWidget(ctx, false);
-			return;
-		}
+		if (msg.role !== "assistant" || !msg.usage) return;
 
 		const id = String(msg.timestamp);
 		const state = messageStates.get(id);
 
-		if (!state?.start) {
-			renderWidget(ctx, false);
-			return;
-		}
+		if (!state?.start) return;
 
 		const now = Date.now();
 		state.end = now;
@@ -128,7 +143,7 @@ export default function (pi: ExtensionAPI) {
 		buffer.push({ ...state });
 
 		messageStates.delete(id);
-		renderWidget(ctx, false);
+		renderWidget(ctx);
 	});
 
 	pi.on("session_shutdown", (_event, ctx) => {
