@@ -1,0 +1,16 @@
+{
+  "name": "@shuhaowu/opencode-tps-report",
+  "version": "0.1.0",
+  "type": "module",
+  "keywords": ["opencode-package"],
+  "exports": {
+    "./tui": "./index.tsx"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit && biome check .",
+    "format": "biome format --write ."
+  }
+}

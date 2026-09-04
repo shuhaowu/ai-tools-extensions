@@ -53,9 +53,11 @@ function formatTtft(ms: number | null): string {
 	return `${Math.round(ms)}ms`;
 }
 
+const RING_BUFFER_SIZE = 16;
+
 export default function (pi: ExtensionAPI) {
 	const messageStates = new Map<string, MessageState>();
-	const buffer = new RingBuffer<MessageState>(16);
+	const buffer = new RingBuffer<MessageState>(RING_BUFFER_SIZE);
 
 	const clearWidget = (ctx: ExtensionContext) => {
 		ctx.ui.setWidget(WIDGET_ID, undefined);

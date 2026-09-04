@@ -4,7 +4,8 @@
   "keywords": ["pi-package"],
   "workspaces": [
     "packages/*",
-    "pi/extensions/*"
+    "pi/extensions/*",
+    "opencode/plugins/*"
   ],
   "type": "module",
   "pi": {

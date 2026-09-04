@@ -4,6 +4,8 @@
     "includes": [
       "packages/**/*.ts",
       "pi/extensions/**/*.ts",
+      "opencode/plugins/**/*.ts",
+      "opencode/plugins/**/*.tsx",
       "!!.pi/git/**/*",
     ]
   },
