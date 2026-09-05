@@ -2,7 +2,14 @@
   "name": "@shuhaowu/pi-tps-report",
   "version": "0.1.0",
   "type": "module",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/shuhaowu/ai-tools-extensions",
   "keywords": ["pi-package"],
+  "files": [
+    "index.ts",
+    "README.md",
+    "imgs"
+  ],
   "pi": {
     "extensions": ["./index.ts"]
   },

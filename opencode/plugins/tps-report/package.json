@@ -2,7 +2,13 @@
   "name": "@shuhaowu/opencode-tps-report",
   "version": "0.1.0",
   "type": "module",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/shuhaowu/ai-tools-extensions",
   "keywords": ["opencode-package"],
+  "files": [
+    "index.tsx",
+    "README.md"
+  ],
   "exports": {
     "./tui": "./index.tsx"
   },
